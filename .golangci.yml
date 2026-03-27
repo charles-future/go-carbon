@@ -1,0 +1,53 @@
+version: "2"
+linters:
+  default: none
+  enable:
+    - gocritic
+    - ineffassign
+    - asciicheck
+    - misspell
+    - promlinter
+    - errorlint
+    - govet
+    - unparam
+    - bodyclose
+    - gochecknoinits
+
+    # enabled in carbonapi
+    # - gosec
+
+    # The linters we need to enable ASAP.
+    # Enabling would require significant changes.
+    # - gochecknoglobals
+    # - unconvert
+    # - wrapcheck
+
+    # The linters that would be nice to have in order of decreasing priority.
+    # They are disabled now because they cause a lot of warnings that would require multiple changes.
+    # - revive
+    # - cyclop or gocyclo
+    # - whitespace
+    # - gomnd
+    # - lll
+
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

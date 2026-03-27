@@ -1,0 +1,84 @@
+name: Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  tests:
+    name: Test code
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [oldstable, stable]
+
+    steps:
+      - name: Set up Go stable
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go }}
+          check-latest: true
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v5
+
+      - name: Ensure go.sum exists
+        run: go mod tidy
+
+      - name: Checkout to the latest tag
+        run: |
+          # Fetch all tags
+          git fetch --depth=1 --tags
+          # Get the latest tag
+          VERS=$(git tag -l | sort -Vr | head -n1)
+          # Fetch everything to the latest tag
+          git fetch --shallow-since=$(git log $VERS -1 --format=%at)
+        if: ${{ github.event_name == 'push' }} # only when built from master
+
+      - name: Build project
+        run: make
+
+      - name: Test
+        run: make test
+        env:
+          CGO_ENABLED: 1
+
+      - name: Govulncheck
+        if: ${{ matrix.go == 'stable' }} # only do govulncheck when built with latest stable go
+        id: govulncheck
+        uses: golang/govulncheck-action@v1
+        with:
+          go-version-input: ${{ matrix.go }}
+          check-latest: true
+          go-package: ./...
+
+      - name: Check Docker images
+        run: |
+          make image
+
+      - name: Check packaging
+        run: |
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.40.0
+          make DEVEL=1 nfpm-deb nfpm-rpm
+          make sum-files
+
+      - name: Upload Artifact
+        if: ${{ matrix.go == 'stable' }} # only upload artifact when built with latest stable go
+        id: artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: packages-${{ matrix.go }}
+          retention-days: 3
+          path: |
+            *.deb
+            *.rpm
+            sha256sum
+            md5sum
+
+      - name: Push packages to the autobuilds repo
+        if: ${{ github.event_name == 'push' && matrix.go == 'stable' }} # only when built from master with latest stable go
+        run: make DEVEL=1 packagecloud-autobuilds
+        env:
+          PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}

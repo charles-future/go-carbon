@@ -1,0 +1,21 @@
+[Unit]
+Description=Golang implementation of Graphite/Carbon server
+Documentation=https://github.com/go-graphite/go-carbon
+After=network-online.target local-fs.target
+Wants=network-online.target local-fs.target
+
+[Service]
+Type=simple
+User=carbon
+Group=carbon
+ExecStart=/usr/bin/go-carbon -config /etc/go-carbon/go-carbon.conf
+ExecReload=/bin/kill -HUP $MAINPID
+KillSignal=USR2
+Restart=on-failure
+
+TimeoutStopSec=600
+LimitNOFILE=1048576
+LimitMEMLOCK=infinity
+
+[Install]
+WantedBy=multi-user.target
